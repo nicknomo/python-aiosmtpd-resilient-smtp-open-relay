@@ -1,0 +1,7 @@
+0.1
+---
+
+*Release date: 14-SEP-2017*
+
+* Created a resilient SMTP open relay using AIOsmtpd
+
