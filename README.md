@@ -3,34 +3,40 @@ A resilient open relay based on aiosmtpd, that attempts to deliver mail through 
 
 This project will make a resilient SMTP relay using aiosmtpd and smtplib. It is for the Windows platform only.
 
-##settings.ini
+## settings.ini
 
-#dnsproviderlist 
+### dnsproviderlist 
 A list of DNS servers, separated by commas, that will be use to resolve MX records. Your computers default DNS server will be attempted first.
 
-#HELOname
+### HELOname
 The name that will be announced when a connection is made to an external email server.
 
-#smtprelayport
+### smtprelayport
 The port that this email server will bind to
 
-#bindip
+### bindip
 The IP address that this email server will bind to
 
-#backupgwip 
+### backupgwip 
 The alternate route to try and send email through
 
-#retrycount 
+### retrycount 
 The number of retries to send an outgoing email
 
-#retrydelay
+### retrydelay
 The delay between retries (in seconds).
 
-#ipv6enabled
+### ipv6enabled
 Enable use of ipv6
 
-#backupgwipv6
+### backupgwipv6
 IPv6 backup gateway.
 
-#ipv6intnum
+### ipv6intnum
 The interface to use for ipv6 connections (run "netsh interface ipv6 show interfaces ")
+
+### relayoflastresortenabled
+Enables routing to another relay
+
+### relayoflastresort
+The ip of the relay of last resort
