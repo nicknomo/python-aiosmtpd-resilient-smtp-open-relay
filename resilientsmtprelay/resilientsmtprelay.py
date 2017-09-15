@@ -40,6 +40,9 @@ retrydelay = 2
 #Enable ipv6 lookups (you can still use ipv6 dns servers)
 ipv6enabled = False
 
+relayoflastresortenabled = True
+relayoflastresort = '192.168.1.3'
+
 
 lock = threading.Lock()
 
@@ -298,14 +301,18 @@ class mailsender(threading.Thread):
 				if (dnslist):
 					return dnslist
 		
-		except BaseException as e:		
+		except BaseException as e:
+			print("mx records exception")
 			print(e)
 		
+		print("Now in MX records middle")
 		
 		if not dnslist:
 			#Now we search our alternate servers
 			for dnsserver in dnsproviderlist:
-				if ( isipv6(dnsserver) and not ipv6enabled ) : continue
+				if ( isipv6(dnsserver) and not ipv6enabled ) : 
+					print("Skipping ipv6 DNS provider")
+					continue
 				try:
 					dnsrequest.nameservers = [dnsserver]
 					mxlist = self.runmxquery(dnsrequest,domain)
@@ -379,16 +386,30 @@ class mailsender(threading.Thread):
 			
 					except BaseException as e:
 						print(e)
-						failmessage=failmessage + " \n" + str(e)
+						failmessage=failmessage + " \n" + str(e) + " \n"
 						self.lock.release()					
 					
 					deleteroute(ip)
 						
 				time.sleep(retrydelay)			
 				
-			
-			if (not isNDR):
-				self.sendemail(self.email_from,failmessage,True)
+			if (relayoflastresortenabled):
+				self.lock.acquire()
+				try:
+					self.generateSMTP(relayoflastresort,recipient,message)
+					self.lock.release()
+					return
+					
+				except BaseException as e:
+					print(e)
+					failmessage=failmessage + " \n" + str(e) + " \n"
+					self.lock.release()
+					if (not isNDR):
+						self.sendemail(self.email_from,failmessage,True)
+			else:
+				if (not isNDR):
+					self.sendemail(self.email_from,failmessage,True)
+				
 			
 			
 			
@@ -398,10 +419,26 @@ class mailsender(threading.Thread):
 			self.lock.release()
 			cleardnsroutes()
 			time.sleep(30)
-			if (not isNDR):
-				self.sendemail(self.email_from,failmessage,True)
-			#with lock:
-			#	self.generateNDR(self.email_from,failmessage)
+			
+			if (relayoflastresortenabled):
+				self.lock.acquire()
+				try:
+					self.generateSMTP(relayoflastresort,recipient,message)
+					self.lock.release()
+					return
+					
+				except BaseException as e:
+					print(e)
+					failmessage=failmessage + " \n" + str(e) + " \n"
+					self.lock.release()
+					if (not isNDR):
+						self.sendemail(self.email_from,failmessage,True)
+				
+			else:
+				if (not isNDR):
+					self.sendemail(self.email_from,failmessage,True)
+					
+			
 	
 	
 
@@ -453,7 +490,7 @@ class CustomHandler:
 
 
 def getValuesFromConfigFile(configfile):
-	global dnsproviderlist,HELOname, smtprelayport,bindip,backupgwip,backupgwipv6,ipv6intnum,retrydelay,retrycount,ipv6enabled
+	global dnsproviderlist,HELOname,smtprelayport,bindip,backupgwip,backupgwipv6,ipv6intnum,retrydelay,retrycount,ipv6enabled,relayoflastresortenabled,relayoflastresort
 	parser = SafeConfigParser()
 	parser.read(configfile)
 	for section_name in parser.sections():		
@@ -535,7 +572,23 @@ def getValuesFromConfigFile(configfile):
 				except BaseException as e:
 					print(e)
 					print("IPV6 will be disabled")
+					
+			if (name=='relayoflastresortenabled'):				
+				try:
+					relayoflastresortenabled = bool(distutils.util.strtobool(value))
+					print(name + ": " + value)
 				
+				except BaseException as e:
+					print(e)
+					print("Relay of last resort disabled")
+				
+			if (name=='relayoflastresort'):
+				if (isvalidip(value)):
+					relayoflastresort = value
+					print(relayoflastresort)
+				else:
+					print("Invalid Relay of last resotr, using default of 192.168.1.3")
+				print(name + ": " + value)
 				
 			
 			
@@ -555,10 +608,12 @@ if __name__ == '__main__':
 		print(e)
 		print("Error Reading settings.ini")
 	
+	print("test")
+	print(relayoflastresortenabled)
+	print(relayoflastresort)
 	
 	controller.start()
-	
-	
-	
+
+
 	input('SMTP server running. Press Return to stop server and exit. \n')
 	controller.stop()
